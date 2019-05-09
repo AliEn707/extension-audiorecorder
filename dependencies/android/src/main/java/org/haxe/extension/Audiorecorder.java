@@ -12,6 +12,7 @@ import android.media.AudioRecord;
 import android.media.AudioFormat;
 import android.media.MediaRecorder;
 import android.util.Log;
+import android.media.audiofx.NoiseSuppressor;
 
 
 import java.io.IOException;
@@ -47,11 +48,6 @@ import org.haxe.lime.HaxeObject;
 */
 public class Audiorecorder extends Extension {
 
-
-	public static void sampleMethod (int inputValue, final HaxeObject callback) {
-		callback.call ("action", new Object[] { inputValue * 100 });
-	}
-
 	private static final String TAG = "trace[java]";
 	private static int RECORDER_SAMPLERATE = 8000;
 	private static int RECORDER_CHANNELS = AudioFormat.CHANNEL_IN_MONO;
@@ -59,44 +55,62 @@ public class Audiorecorder extends Extension {
 	private static int bufferSize;
 	
 	private static AudioRecord recorder = null;
+	private static NoiseSuppressor supressor = null;
 	private static Thread recordingThread = null;
+	
 	private static boolean isRecording = false;
 	
 	//todo change for update listener
-	public static String startRecording(final HaxeObject callback) {
-		if (isRecording)
-			return ",,";
-			
-		bufferSize = AudioRecord.getMinBufferSize(RECORDER_SAMPLERATE,
-				RECORDER_CHANNELS, RECORDER_AUDIO_ENCODING) * 2;
+	public static String startRecording(final HaxeObject callback, int size) {
+		if (isRecording){
+			callback.call("fail", new Object[] {-1});//change to Throwable
+			return "-1,0,0";
+		}
+		try{
+			bufferSize = AudioRecord.getMinBufferSize(RECORDER_SAMPLERATE,
+					RECORDER_CHANNELS, RECORDER_AUDIO_ENCODING) * 2;
 
-		recorder = initFirstGood();
-		/*new AudioRecord(MediaRecorder.AudioSource.MIC,
-				RECORDER_SAMPLERATE, RECORDER_CHANNELS,
-				RECORDER_AUDIO_ENCODING, bufferSize);
-		*/
-		recorder.startRecording();
-		isRecording = true;
-		recordingThread = new Thread(new Runnable() {
-			public void run() {
-				byte sData[] = new byte[bufferSize];
-
-				while (isRecording) {
-					// gets the voice output from microphone to byte format
-					recorder.read(sData, 0, bufferSize);
-					Log.i(TAG,"Got data" + sData.toString());
+			recorder = initFirstGood(size);
+			/*new AudioRecord(MediaRecorder.AudioSource.MIC,
+					RECORDER_SAMPLERATE, RECORDER_CHANNELS,
+					RECORDER_AUDIO_ENCODING, bufferSize);
+			*/
+//			if (recorder!=null){//lets catch nullpointer exception ^_^
+			recorder.startRecording();
+			isRecording = true;
+			recordingThread = new Thread(new Runnable() {
+				public void run() {
+					byte sData[] = new byte[bufferSize];
 					try {
-						//pass data to haxe
-						callback.call("action", new Object[] {sData});
+						while (isRecording) {
+							// gets the voice output from microphone to byte format
+							recorder.read(sData, 0, bufferSize);
+							Log.i(TAG,"Got data" + sData.toString());
+							//pass data to haxe
+							callback.call("action", new Object[] {sData});
+						}
 					} catch (Throwable e) {
 						e.printStackTrace();
 						//call error
+						callback.call("fail", new Object[] {e});
 					}
 				}
+			}, "AudioRecorder Thread");
+			recordingThread.start();
+			supressor = NoiseSuppressor.create(recorder.getAudioSessionId());
+			if (!supressor.isAvailable()){
+				supressor.release();
+				supressor=null;
 			}
-		}, "AudioRecorder Thread");
-		recordingThread.start();
-		return RECORDER_SAMPLERATE+","+getChannels(RECORDER_CHANNELS)+","+getFormat(RECORDER_AUDIO_ENCODING);
+			//TODO: use it
+			//supressor.setEnabled(true);
+			
+			return RECORDER_SAMPLERATE+","+getChannels(RECORDER_CHANNELS)+","+getFormat(RECORDER_AUDIO_ENCODING);
+//			}
+		}catch(Throwable e){
+		}
+		callback.call("fail", new Object[] {null});//change to Throwable
+		return "0,0,0";
 	}
 	
 	private static int getChannels(int i){
@@ -115,18 +129,18 @@ public class Audiorecorder extends Extension {
 		return 4;
 	}
 	
-	private static AudioRecord initFirstGood(){
-		int[] mSampleRates = new int[] { /*44100, 11025, 22050, 16000,*/ 8000, 11025, 16000, 22050, 44100 };
+	private static AudioRecord initFirstGood(int size){
+		int[] mSampleRates = new int[] { 8000, 11025, 16000, 22050, 44100 };
 		short [] aformats = new short[] { AudioFormat.ENCODING_PCM_8BIT, AudioFormat.ENCODING_PCM_16BIT };
 		short [] chConfigs = new short[] { AudioFormat.CHANNEL_IN_MONO, AudioFormat.CHANNEL_IN_STEREO };
 		Log.i(TAG, aformats + "");
 		Log.i(TAG, chConfigs + "");
-		for (int rate : mSampleRates) {
-			RECORDER_SAMPLERATE=rate;
-			for (short audioFormat : aformats) {
-				RECORDER_AUDIO_ENCODING=audioFormat;
-				for (short channelConfig : chConfigs) {
-					RECORDER_CHANNELS=channelConfig;
+		for (short channelConfig : chConfigs) {
+			RECORDER_CHANNELS=channelConfig;
+			for (int rate : mSampleRates) {
+				RECORDER_SAMPLERATE=rate;
+				for (short audioFormat : aformats) {
+					RECORDER_AUDIO_ENCODING=audioFormat;
 					try {
 						Log.d(TAG, "Attempting rate " + rate + "Hz, bits: " + audioFormat + ", channel: " + channelConfig);
 						int bufferSize = AudioRecord.getMinBufferSize(rate, channelConfig, audioFormat);
@@ -134,7 +148,7 @@ public class Audiorecorder extends Extension {
 							Log.d(TAG, "Buffer size OK "+bufferSize);
 							return new AudioRecord(MediaRecorder.AudioSource.MIC,
 								rate, channelConfig,
-								audioFormat, bufferSize);
+								audioFormat, bufferSize>size? bufferSize : size);
 						}
 					}catch(Throwable e){
 						Log.e(TAG,e+"");
