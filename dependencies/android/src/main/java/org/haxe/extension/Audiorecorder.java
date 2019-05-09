@@ -17,6 +17,7 @@ import android.media.audiofx.NoiseSuppressor;
 
 import java.io.IOException;
 import java.lang.Throwable;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.haxe.lime.HaxeObject;
 
@@ -58,11 +59,11 @@ public class Audiorecorder extends Extension {
 	private static NoiseSuppressor supressor = null;
 	private static Thread recordingThread = null;
 	
-	private static boolean isRecording = false;
+	private static AtomicBoolean isRecording = new AtomicBoolean();
 	
 	//todo change for update listener
 	public static String startRecording(final HaxeObject callback, int size) {
-		if (isRecording){
+		if (isRecording.get()){
 			callback.call("fail", new Object[] {-1});//change to Throwable
 			return "-1,0,0";
 		}
@@ -77,12 +78,12 @@ public class Audiorecorder extends Extension {
 			*/
 //			if (recorder!=null){//lets catch nullpointer exception ^_^
 			recorder.startRecording();
-			isRecording = true;
+			isRecording.set(true);
 			recordingThread = new Thread(new Runnable() {
 				public void run() {
 					byte sData[] = new byte[bufferSize];
 					try {
-						while (isRecording) {
+						while (isRecording.get()) {
 							// gets the voice output from microphone to byte format
 							recorder.read(sData, 0, bufferSize);
 							Log.i(TAG,"Got data" + sData.toString());
@@ -162,7 +163,7 @@ public class Audiorecorder extends Extension {
 	public static void stopRecording() {
 		// stops the recording activity
 		if (null != recorder) {
-			isRecording = false;
+			isRecording.set(false);
 			recorder.stop();
 			recorder.release();
 			recorder = null;
