@@ -1,13 +1,14 @@
 {
-  "name": "extension_audiorecorder",
-  "url": "",
+  "name": "extension-audiorecorder",
+  "url": "https://github.com/AliEn707/extension-audiorecorder.git",
   "license": "MIT",
-  "tags": [],
-  "description": "",
+  "tags": ["mobile", "android", "ios", "audio"],
+  "description": "Extension for recording sound",
   "version": "1.0.0",
-  "releasenote": "",
+  "classPath" : "source",
+  "releasenote": "Initial",
   "contributors": [""],
   "dependencies": {
-
+	 "openfl": ""
   }
 }
