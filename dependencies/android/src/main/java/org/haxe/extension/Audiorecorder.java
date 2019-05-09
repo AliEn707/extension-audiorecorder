@@ -144,12 +144,14 @@ public class Audiorecorder extends Extension {
 					RECORDER_AUDIO_ENCODING=audioFormat;
 					try {
 						Log.d(TAG, "Attempting rate " + rate + "Hz, bits: " + audioFormat + ", channel: " + channelConfig);
-						int bufferSize = AudioRecord.getMinBufferSize(rate, channelConfig, audioFormat);
+						bufferSize = AudioRecord.getMinBufferSize(rate, channelConfig, audioFormat);
 						if (bufferSize != AudioRecord.ERROR_BAD_VALUE) {
+                                                        if (size>bufferSize)
+                                                            bufferSize=size;
 							Log.d(TAG, "Buffer size OK "+bufferSize);
 							return new AudioRecord(MediaRecorder.AudioSource.MIC,
 								rate, channelConfig,
-								audioFormat, bufferSize>size? bufferSize : size);
+								audioFormat, bufferSize*2);
 						}
 					}catch(Throwable e){
 						Log.e(TAG,e+"");
