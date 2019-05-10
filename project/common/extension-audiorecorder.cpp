@@ -10,5 +10,16 @@ namespace extension_audiorecorder {
 		
 	}
 	
+	void startRecording(int size){
+	}
 	
+	void startRecordingBluetooth(int size){
+	}
+	
+	void stopRecording(){
+	}
+	
+	bool enableSupressor(bool mode){
+		return 0;
+	}
 }

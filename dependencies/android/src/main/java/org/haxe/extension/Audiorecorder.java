@@ -2,9 +2,13 @@ package org.haxe.extension;
 
 
 import android.app.Activity;
+import android.content.Context;
+import android.content.Intent;
 import android.content.res.AssetManager;
 import android.content.Context;
 import android.content.Intent;
+import android.content.BroadcastReceiver;
+import android.content.IntentFilter;
 import android.os.Bundle;
 import android.os.Handler;
 import android.view.View;
@@ -19,6 +23,8 @@ import android.media.audiofx.NoiseSuppressor;
 import java.io.IOException;
 import java.lang.Throwable;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.List;
+import java.util.ArrayList;
 
 import org.haxe.lime.HaxeObject;
 
@@ -56,6 +62,11 @@ public class Audiorecorder extends Extension {
 	private static int RECORDER_AUDIO_ENCODING = AudioFormat.ENCODING_PCM_16BIT;
 	private static int bufferSize;
 	
+	private static List<Integer> mSampleRates = new ArrayList<Integer>();// { 8000, 11025, 16000, 22050, 44100 };
+	private static List<Short> aformats = new ArrayList<Short>();// { AudioFormat.ENCODING_PCM_8BIT, AudioFormat.ENCODING_PCM_16BIT };
+	private static List<Short> chConfigs = new ArrayList<Short>();// { AudioFormat.CHANNEL_IN_MONO, AudioFormat.CHANNEL_IN_STEREO };
+	
+	private static BroadcastReceiver receiver = null;
 	private static AudioRecord recorder = null;
 	private static NoiseSuppressor supressor = null;
 	private static Thread recordingThread = null;
@@ -108,32 +119,41 @@ public class Audiorecorder extends Extension {
 			return RECORDER_SAMPLERATE+","+getChannels(RECORDER_CHANNELS)+","+getFormat(RECORDER_AUDIO_ENCODING);
 //			}
 		}catch(Throwable e){
-			callback.call("fail", new Object[] {e+""});//change to Throwable
+			callback.call("fail", new Object[] {e+" (No available config)"});//change to Throwable
 		}
 		return "0,0,0";
 	}
 
-	public static void startRecordingBluetooth(final HaxeObject callback, final HaxeObject result, int size) {
-/*		am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
-
-		context.registerReceiver(new BroadcastReceiver() {
+	public static void startRecordingBluetooth(final HaxeObject callback, final HaxeObject result, final int size) {
+		AudioManager am = (AudioManager) Extension.mainContext.getSystemService(Context.AUDIO_SERVICE);
+		if (receiver!=null){
+			Extension.mainContext.unregisterReceiver(receiver);
+		}
+		receiver=new BroadcastReceiver() {
 
 			@Override
 			public void onReceive(Context context, Intent intent) {
 				int state = intent.getIntExtra(AudioManager.EXTRA_SCO_AUDIO_STATE, -1);
 				Log.d(TAG, "Audio SCO state: " + state);
 
-				if (AudioManager.SCO_AUDIO_STATE_CONNECTED == state) { 
-					
-					unregisterReceiver(this);
+				if (AudioManager.SCO_AUDIO_STATE_CONNECTED == state) {
+					result.call("fail", new Object[] { startRecording(callback, size) });
+				}else if (AudioManager.SCO_AUDIO_STATE_DISCONNECTED == state){
+					callback.call("fail", new Object[] {"Bluetooth disconnected"});
+					//stopRecording();
+				}else if (AudioManager.SCO_AUDIO_STATE_ERROR == state) { 
+					callback.call("fail", new Object[] {"Bluetooth error"});
+					stopRecording();
 				}
 
 			}
-		}, new IntentFilter(AudioManager.ACTION_SCO_AUDIO_STATE_CHANGED));
-
+		};
+		am.setMode(AudioManager.MODE_IN_COMMUNICATION);
+		
+		Extension.mainContext.registerReceiver(receiver, new IntentFilter(AudioManager.ACTION_SCO_AUDIO_STATE_CHANGED));
 		Log.d(TAG, "starting bluetooth");
 		am.startBluetoothSco();
-*/	}
+	}
 	
 	private static int getChannels(int i){
 		if (i==AudioFormat.CHANNEL_IN_STEREO)
@@ -152,25 +172,22 @@ public class Audiorecorder extends Extension {
 	}
 	
 	private static AudioRecord initFirstGood(int size){
-		int[] mSampleRates = new int[] { 8000, 11025, 16000, 22050, 44100 };
-		short [] aformats = new short[] { AudioFormat.ENCODING_PCM_8BIT, AudioFormat.ENCODING_PCM_16BIT };
-		short [] chConfigs = new short[] { AudioFormat.CHANNEL_IN_MONO, AudioFormat.CHANNEL_IN_STEREO };
-		for (short channelConfig : chConfigs) {
+		for (Short channelConfig : chConfigs) {
 			RECORDER_CHANNELS=channelConfig;
-			for (int rate : mSampleRates) {
+			for (Integer rate : mSampleRates) {
 				RECORDER_SAMPLERATE=rate;
-				for (short audioFormat : aformats) {
+				for (Short audioFormat : aformats) {
 					RECORDER_AUDIO_ENCODING=audioFormat;
 					try {
 						Log.d(TAG, "Attempting rate " + rate + "Hz, bits: " + audioFormat + ", channel: " + channelConfig);
-						bufferSize = AudioRecord.getMinBufferSize(rate, channelConfig, audioFormat);
+						bufferSize = AudioRecord.getMinBufferSize((int)rate, (short)channelConfig, (short)audioFormat);
 						if (bufferSize != AudioRecord.ERROR_BAD_VALUE) {
 							if (size>bufferSize)
 								bufferSize=size;
 							Log.d(TAG, "Buffer size OK "+bufferSize);
 							return new AudioRecord(MediaRecorder.AudioSource.MIC,
-								rate, channelConfig,
-								audioFormat, bufferSize*2);
+								(int)rate, (short)channelConfig,
+								(short)audioFormat, bufferSize*2);
 						}
 					}catch(Throwable e){
 						Log.e(TAG,e+"");
@@ -189,6 +206,41 @@ public class Audiorecorder extends Extension {
 		return false;
 	}
 	
+	public static void addRate(int rate) {//{ 8000, 11025, 16000, 22050, 44100 };
+		mSampleRates.add(rate);
+	}
+	
+	public static void addChanel(int num) {
+		if (num==1){
+			chConfigs.add((short)AudioFormat.CHANNEL_IN_MONO);
+		}else if(num==2){			
+			chConfigs.add((short)AudioFormat.CHANNEL_IN_STEREO);
+		}
+	}
+	
+	public static void addBits(int bits) {
+		if (bits==8){
+			aformats.add((short)AudioFormat.ENCODING_PCM_8BIT);			
+		}else if (bits==16){
+			aformats.add((short)AudioFormat.ENCODING_PCM_16BIT);
+		}else if (bits==32){
+			aformats.add((short)AudioFormat.ENCODING_PCM_FLOAT);
+		}
+	}
+	
+	public static void clearRates(){
+		mSampleRates.clear();
+	}
+	
+	public static void clearChanel(){
+		chConfigs.clear();
+	}
+	
+	public static void clearBits(){
+		aformats.clear();
+	}
+	
+	
 	public static void stopRecording() {
 		// stops the recording activity
 		if (null != recorder) {
@@ -202,6 +254,14 @@ public class Audiorecorder extends Extension {
 			supressor.release();
 			supressor=null;
 		}
+		if (receiver != null){
+			AudioManager am = (AudioManager) Extension.mainContext.getSystemService(Context.AUDIO_SERVICE);
+			am.stopBluetoothSco();
+			am.setMode(AudioManager.MODE_NORMAL);
+			Extension.mainContext.unregisterReceiver(receiver);
+			receiver=null;
+		}
+		
 	}
 	
 }
