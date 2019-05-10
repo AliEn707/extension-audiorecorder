@@ -60,6 +60,7 @@ class Audiorecorder {
 	#if android
 		return jni_enableSupressor(mode);
 	#end
+		return false;
 	};
 
 	public static function isSilent(pcm:Array<Int>, treshhold:Int = 10):Bool{
