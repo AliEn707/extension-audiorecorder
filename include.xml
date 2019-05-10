@@ -5,6 +5,7 @@
 	
 	<!-- Use the following for an Android Java extension, not needed otherwise -->
 	
+	<haxelib name="android6permissions" if="android" />
 	<dependency name="audiorecorder" path="dependencies/android" if="android" />
 	<android extension="org.haxe.extension.Audiorecorder" />
 	

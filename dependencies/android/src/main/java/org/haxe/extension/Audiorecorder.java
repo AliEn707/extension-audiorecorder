@@ -11,6 +11,7 @@ import android.view.View;
 import android.media.AudioRecord;
 import android.media.AudioFormat;
 import android.media.MediaRecorder;
+import android.media.AudioManager;
 import android.util.Log;
 import android.media.audiofx.NoiseSuppressor;
 
@@ -86,35 +87,53 @@ public class Audiorecorder extends Extension {
 						while (isRecording.get()) {
 							// gets the voice output from microphone to byte format
 							recorder.read(sData, 0, bufferSize);
-							Log.i(TAG,"Got data" + sData.toString());
+							//Log.i(TAG,"Got data");
 							//pass data to haxe
 							callback.call("action", new Object[] {sData});
 						}
 					} catch (Throwable e) {
 						e.printStackTrace();
 						//call error
-						stopRecording();
-						callback.call("fail", new Object[] {e});
+						callback.call("fail", new Object[] {e+""});
 					}
 				}
 			}, "AudioRecorder Thread");
 			recordingThread.start();
 			supressor = NoiseSuppressor.create(recorder.getAudioSessionId());
-			if (!supressor.isAvailable()){
+			if (supressor!=null && !supressor.isAvailable()){
 				supressor.release();
 				supressor=null;
 			}
-			//TODO: use it
-			//supressor.setEnabled(true);
-			
+			callback.call0("ready");
 			return RECORDER_SAMPLERATE+","+getChannels(RECORDER_CHANNELS)+","+getFormat(RECORDER_AUDIO_ENCODING);
 //			}
 		}catch(Throwable e){
+			callback.call("fail", new Object[] {e+""});//change to Throwable
 		}
-		stopRecording();
-		callback.call("fail", new Object[] {null});//change to Throwable
 		return "0,0,0";
 	}
+
+	public static void startRecordingBluetooth(final HaxeObject callback, final HaxeObject result, int size) {
+/*		am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+
+		context.registerReceiver(new BroadcastReceiver() {
+
+			@Override
+			public void onReceive(Context context, Intent intent) {
+				int state = intent.getIntExtra(AudioManager.EXTRA_SCO_AUDIO_STATE, -1);
+				Log.d(TAG, "Audio SCO state: " + state);
+
+				if (AudioManager.SCO_AUDIO_STATE_CONNECTED == state) { 
+					
+					unregisterReceiver(this);
+				}
+
+			}
+		}, new IntentFilter(AudioManager.ACTION_SCO_AUDIO_STATE_CHANGED));
+
+		Log.d(TAG, "starting bluetooth");
+		am.startBluetoothSco();
+*/	}
 	
 	private static int getChannels(int i){
 		if (i==AudioFormat.CHANNEL_IN_STEREO)
@@ -136,8 +155,6 @@ public class Audiorecorder extends Extension {
 		int[] mSampleRates = new int[] { 8000, 11025, 16000, 22050, 44100 };
 		short [] aformats = new short[] { AudioFormat.ENCODING_PCM_8BIT, AudioFormat.ENCODING_PCM_16BIT };
 		short [] chConfigs = new short[] { AudioFormat.CHANNEL_IN_MONO, AudioFormat.CHANNEL_IN_STEREO };
-		Log.i(TAG, aformats + "");
-		Log.i(TAG, chConfigs + "");
 		for (short channelConfig : chConfigs) {
 			RECORDER_CHANNELS=channelConfig;
 			for (int rate : mSampleRates) {
@@ -148,8 +165,8 @@ public class Audiorecorder extends Extension {
 						Log.d(TAG, "Attempting rate " + rate + "Hz, bits: " + audioFormat + ", channel: " + channelConfig);
 						bufferSize = AudioRecord.getMinBufferSize(rate, channelConfig, audioFormat);
 						if (bufferSize != AudioRecord.ERROR_BAD_VALUE) {
-                                                        if (size>bufferSize)
-                                                            bufferSize=size;
+							if (size>bufferSize)
+								bufferSize=size;
 							Log.d(TAG, "Buffer size OK "+bufferSize);
 							return new AudioRecord(MediaRecorder.AudioSource.MIC,
 								rate, channelConfig,
@@ -164,6 +181,14 @@ public class Audiorecorder extends Extension {
 		return null;
 	}
 
+	public static boolean enableSupressor(boolean mode) {
+		if (supressor!=null){
+			supressor.setEnabled(mode);
+			return supressor.isAvailable();
+		}
+		return false;
+	}
+	
 	public static void stopRecording() {
 		// stops the recording activity
 		if (null != recorder) {
@@ -172,6 +197,10 @@ public class Audiorecorder extends Extension {
 			recorder.release();
 			recorder = null;
 			recordingThread = null;
+		}
+		if (supressor!=null){
+			supressor.release();
+			supressor=null;
 		}
 	}
 	

@@ -9,6 +9,7 @@
   "releasenote": "Initial",
   "contributors": [""],
   "dependencies": {
-	 "openfl": ""
+	 "openfl": "",
+	 "android6permissions": ""
   }
 }
