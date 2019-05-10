@@ -93,6 +93,7 @@ public class Audiorecorder extends Extension {
 					} catch (Throwable e) {
 						e.printStackTrace();
 						//call error
+						stopRecording();
 						callback.call("fail", new Object[] {e});
 					}
 				}
@@ -110,6 +111,7 @@ public class Audiorecorder extends Extension {
 //			}
 		}catch(Throwable e){
 		}
+		stopRecording();
 		callback.call("fail", new Object[] {null});//change to Throwable
 		return "0,0,0";
 	}
