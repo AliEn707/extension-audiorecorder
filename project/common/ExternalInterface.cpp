@@ -6,31 +6,66 @@
 #define NEKO_COMPATIBLE
 #endif
 
+#include <cstring>
 
 #include <hx/CFFI.h>
+#include <hxcpp.h>
+#include <Array.h>
+
+
 #include "Utils.h"
 
 
 using namespace extension_audiorecorder;
 
+#define idval(name) id_##name?id_##name:id_##name=val_id(#name)
 
-
-static value extension_audiorecorder_sample_method (value inputValue) {
+static value _callback;
+static int id_b;
+static int id_length;
+static int id_action;
+static int id_fail;
+static int id_ready;
 	
-	int returnValue = SampleMethod(val_int(inputValue));
-	return alloc_int(returnValue);
+static void onData(void* dataIn, int length){
+	value bytes;
+
+	unsigned char* data;
+
+	buffer b = alloc_buffer_len (length);
+	data = (unsigned char*)buffer_data (b);
+	if (data) {
+		bytes = buffer_val (b);
+	} else {
+		bytes = alloc_raw_string (length);
+		data = (unsigned char*)val_string (bytes);
+	}
+	memcpy(data, dataIn, length);
+	
+	value object = alloc_empty_object ();
+	alloc_field (object, idval(b), bytes);
+	alloc_field (object, idval(length), alloc_int (length));
+	
+	val_ocall1(_callback, idval(action), object);
 }
-DEFINE_PRIM (extension_audiorecorder_sample_method, 1);
 
+static void onFail(char* error){
+	val_ocall1(_callback, idval(fail), alloc_string(error));
+}
 
-static value extension_audiorecorder_startRecording(value callback, int size){
-	//do some work
-	return alloc_string("0,0,0");
+static void onReady(){
+	val_ocall0(_callback, idval(ready));
+}
+
+static value extension_audiorecorder_startRecording(value callback, value vsize){
+	_callback=callback;
+	return alloc_string(startRecording(val_int(vsize), &onData, &onFail, &onReady));
 }
 DEFINE_PRIM(extension_audiorecorder_startRecording, 2);
 
-static value extension_audiorecorder_startRecordingBluetooth(value callback, value result, int size){
+static value extension_audiorecorder_startRecordingBluetooth(value callback, value result, value size){
 	//do some work
+	_callback=callback;
 	return alloc_null();
 }
 DEFINE_PRIM(extension_audiorecorder_startRecordingBluetooth, 3);

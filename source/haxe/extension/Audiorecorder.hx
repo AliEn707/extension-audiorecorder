@@ -3,16 +3,18 @@ package haxe.extension;
 
 import haxe.Timer.delay;
 import haxe.io.Bytes;
+import haxe.io.BytesData;
+import haxe.io.BytesInput;
 import lime.utils.UInt8Array;
 import lime.media.AudioBuffer;
-#if ios
-import lime.system.CFFI;
-#end
 #if android
 import lime.system.JNI;
+import com.player03.android6.Permissions;
+#else
+import lime.system.CFFI;
 #end
 
-import com.player03.android6.Permissions;
+
 
 class Audiorecorder {
 	
@@ -24,7 +26,7 @@ class Audiorecorder {
 	public static var channels:Array<Int> = [1, 2];
 	public static var bits:Array<Int> = [8,16];
 	
-	public static function startRecording(callback:Array<Int>->Void, ?fail:Dynamic->Void, ?ready:Void->Void, size:Int = 0){
+	public static function startRecording(callback:Bytes->Void, ?fail:String->Void, ?ready:Void->Void, size:Int = 0){
 		initConfig();
 	#if android
 		if (checkPermission(startRecording.bind(callback, fail, ready, size), Permissions.RECORD_AUDIO)){
@@ -33,14 +35,16 @@ class Audiorecorder {
 			RECORDER_CHANNELS = Std.parseInt(arr[1]);
 			RECORDER_BITS = Std.parseInt(arr[2]) * 8;
 		}
+	#else
+		extension_audiorecorder_startRecording(new CallBackAction(callback, fail, ready), size);
 	#end
 	}
 	
-	public static function startRecordingBluetooth(callback:Array<Int>->Void, ?fail:Dynamic->Void, ?ready:Void->Void, size:Int = 0){
+	public static function startRecordingBluetooth(callback:Bytes->Void, ?fail:String->Void, ?ready:Void->Void, size:Int = 0){
 		initConfig();
 	#if android
 		if (checkPermission(startRecordingBluetooth.bind(callback, fail, ready, size), Permissions.RECORD_AUDIO)){
-			jni_startRecordingBluetooth(new CallBackAction(callback, fail, ready), new CallBackAction(function(arr:Array<Int>){}, function(str:Dynamic){
+			jni_startRecordingBluetooth(new CallBackAction(callback, fail, ready), new CallBackAction(function(arr:Bytes){}, function(str:Dynamic){
 				var arr = str.split(",");
 				RECORDER_SAMPLERATE = Std.parseInt(arr[0]);
 				RECORDER_CHANNELS = Std.parseInt(arr[1]);
@@ -69,10 +73,6 @@ class Audiorecorder {
 				return false;
 		}
 		return true;
-	}
-
-	public static function getBytes(pcm:Array<Int>):Bytes{
-		return haxe.io.UInt8Array.fromArray(pcm).getData().bytes;
 	}
 
 	public static function getAudioBuffer(pcm:Bytes):AudioBuffer{
@@ -122,27 +122,34 @@ class Audiorecorder {
 	private static var jni_clearChanel = JNI.createStaticMethod ("org.haxe.extension.Audiorecorder", "clearChanel", "()V");
 	private static var jni_clearBits = JNI.createStaticMethod ("org.haxe.extension.Audiorecorder", "clearBits", "()V");
 #elseif ios
-	private static var extension_audiorecorder_sample_method = CFFI.load ("extension_audiorecorder", "extension_audiorecorder_sample_method", 1);	
+
+#else
+	private static var extension_audiorecorder_startRecording = CFFI.load ("extension_audiorecorder", "extension_audiorecorder_startRecording", 2);	
 #end
 	
 }
 
 class CallBackAction{
-	private var _callback:Null<Array<Int>->Void>;
-	private var _fail:Null<Dynamic->Void>;
+	private var _callback:Null<Bytes->Void>;
+	private var _fail:Null<String->Void>;
 	private var _ready:Null<Void->Void>;
 	
-	public function new(c:Array<Int>->Void, ?f:Dynamic->Void, ?r:Void->Void){
+	public function new(c:Bytes->Void, ?f:String->Void, ?r:Void->Void){
 		_callback = c;
 		_fail = f;
 		_ready = r;
 	}
-	
+#if android
 	public function action(a:Array<Int>){
-		_callback(a);
+		_callback(getBytes(a));
 	}
-	
-	public function fail(a:Dynamic){
+#else
+	public function action(data:Dynamic){
+		var bytes = @:privateAccess new Bytes (data.length, data.b);
+		_callback(bytes);
+	}
+#end
+	public function fail(a:String){
 		if (_fail!=null)
 			_fail(a);
 	}
@@ -151,5 +158,12 @@ class CallBackAction{
 		if (_ready!=null)
 			_ready();
 	}
+	
+#if android
+	private static function getBytes(pcm:Array<Int>):Bytes{
+		return haxe.io.UInt8Array.fromArray(pcm).getData().bytes;
+	}
+#end
+
 }
 

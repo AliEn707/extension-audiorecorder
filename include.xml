@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <project>
 	
-	<ndll name="audiorecorder" if="ios" />
+	<ndll name="extension_audiorecorder" unless="android" />
 	
 	<!-- Use the following for an Android Java extension, not needed otherwise -->
 	
 	<haxelib name="android6permissions" if="android" />
-	<dependency name="audiorecorder" path="dependencies/android" if="android" />
+	<dependency name="extension_audiorecorder" path="dependencies/android" if="android" />
 	<android extension="org.haxe.extension.Audiorecorder" />
 	
 </project>
