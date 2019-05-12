@@ -10,7 +10,7 @@ import lime.media.AudioBuffer;
 import com.player03.android6.Permissions;
 #if android
 import lime.system.JNI;
-#else
+#elseif !flash
 import lime.system.CFFI;
 #end
 
@@ -126,7 +126,7 @@ class Audiorecorder {
 	private static var extension_audiorecorder_clearBits = JNI.createStaticMethod ("org.haxe.extension.Audiorecorder", "clearBits", "()V");
 	private static var extension_audiorecorder_isHeadsetEvailable = JNI.createStaticMethod ("org.haxe.extension.Audiorecorder", "isHeadsetEvailable", "()Z");
 
-#else
+#elseif !flash
 	private static var extension_audiorecorder_startRecording = CFFI.load ("extension_audiorecorder", "extension_audiorecorder_startRecording", 2);	
 	private static var extension_audiorecorder_startRecordingBluetooth = CFFI.load ("extension_audiorecorder", "extension_audiorecorder_startRecordingBluetooth", 3);	
 	private static var extension_audiorecorder_stopRecording = CFFI.load ("extension_audiorecorder", "extension_audiorecorder_stopRecording", 0);	
@@ -155,6 +155,9 @@ class CallBackAction{
 #if android
 	public function action(a:Array<Int>){
 		_callback(getBytes(a));
+	}
+#elseif flash
+	public function action(data:Dynamic){
 	}
 #else
 	public function action(data:Dynamic){

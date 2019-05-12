@@ -63,6 +63,7 @@ public class Audiorecorder extends Extension {
 	private static int RECORDER_CHANNELS = AudioFormat.CHANNEL_IN_MONO;
 	private static int RECORDER_AUDIO_ENCODING = AudioFormat.ENCODING_PCM_16BIT;
 	private static int bufferSize;
+	private static int readSize;
 	
 	private static List<Integer> mSampleRates = new ArrayList<Integer>();// { 8000, 11025, 16000, 22050, 44100 };
 	private static List<Short> aformats = new ArrayList<Short>();// { AudioFormat.ENCODING_PCM_8BIT, AudioFormat.ENCODING_PCM_16BIT };
@@ -81,6 +82,7 @@ public class Audiorecorder extends Extension {
 			callback.call("fail", new Object[] {-1});//change to Throwable
 			return "-1,0,0";
 		}
+		readSize=size;
 		try{
 			bufferSize = AudioRecord.getMinBufferSize(RECORDER_SAMPLERATE,
 					RECORDER_CHANNELS, RECORDER_AUDIO_ENCODING) * 2;
@@ -95,11 +97,11 @@ public class Audiorecorder extends Extension {
 			isRecording.set(true);
 			recordingThread = new Thread(new Runnable() {
 				public void run() {
-					byte sData[] = new byte[bufferSize];
+					byte sData[] = new byte[readSize];
 					try {
 						while (isRecording.get()) {
 							// gets the voice output from microphone to byte format
-							recorder.read(sData, 0, bufferSize);
+							recorder.read(sData, 0, readSize);
 							//Log.i(TAG,"Got data");
 							//pass data to haxe
 							callback.call("action", new Object[] {sData});
@@ -186,6 +188,8 @@ public class Audiorecorder extends Extension {
 						if (bufferSize != AudioRecord.ERROR_BAD_VALUE) {
 							if (size>bufferSize)
 								bufferSize=size;
+							if (size==0)
+								readSize=bufferSize;
 							Log.d(TAG, "Buffer size OK "+bufferSize);
 							return new AudioRecord(MediaRecorder.AudioSource.MIC,
 								(int)rate, (short)channelConfig,
