@@ -18,6 +18,8 @@ import android.media.MediaRecorder;
 import android.media.AudioManager;
 import android.util.Log;
 import android.media.audiofx.NoiseSuppressor;
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothHeadset;
 
 
 import java.io.IOException;
@@ -262,6 +264,12 @@ public class Audiorecorder extends Extension {
 			receiver=null;
 		}
 		
+	}
+	
+	public static Boolean isHeadsetEvailable(){
+		BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+		return mBluetoothAdapter != null && mBluetoothAdapter.isEnabled()
+				&& mBluetoothAdapter.getProfileConnectionState(BluetoothHeadset.HEADSET) == BluetoothHeadset.STATE_CONNECTED;
 	}
 	
 }

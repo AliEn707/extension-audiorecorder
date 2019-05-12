@@ -7,7 +7,15 @@
 		<compilerflag value="-Iinclude"/>
 		
 		<file name="common/ExternalInterface.cpp"/>
-		<file name="common/extension-audiorecorder.cpp"/>
+		
+		
+	</files>
+	
+	<files id="desktop">
+		
+		<compilerflag value="-Iinclude"/>
+		
+		<file name="desktop/extension-audiorecorder.cpp"/>
 		
 	</files>
 	
@@ -22,6 +30,7 @@
 		<outdir name="../ndll/${BINDIR}"/>
 		<ext value=".ndll" if="windows || mac || linux"/>
 		<files id="common"/>
+		<files id="desktop" if="windows || mac || linux"/>
 		
 	</target>
 	

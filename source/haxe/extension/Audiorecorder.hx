@@ -7,9 +7,9 @@ import haxe.io.BytesData;
 import haxe.io.BytesInput;
 import lime.utils.UInt8Array;
 import lime.media.AudioBuffer;
+import com.player03.android6.Permissions;
 #if android
 import lime.system.JNI;
-import com.player03.android6.Permissions;
 #else
 import lime.system.CFFI;
 #end
@@ -26,45 +26,41 @@ class Audiorecorder {
 	public static var channels:Array<Int> = [1, 2];
 	public static var bits:Array<Int> = [8,16];
 	
+	private static var _init = new Audiorecorder();
+	private function new(){
+		#if neko
+			cpp.Prime.nekoInit("extension_audiorecorder");
+		#end
+	}
+	
 	public static function startRecording(callback:Bytes->Void, ?fail:String->Void, ?ready:Void->Void, size:Int = 0){
 		initConfig();
-	#if android
 		if (checkPermission(startRecording.bind(callback, fail, ready, size), Permissions.RECORD_AUDIO)){
-			var arr = jni_startRecording(new CallBackAction(callback, fail, ready), size).split(",");
+			var arr = extension_audiorecorder_startRecording(new CallBackAction(callback, fail, ready), size).split(",");
 			RECORDER_SAMPLERATE = Std.parseInt(arr[0]);
 			RECORDER_CHANNELS = Std.parseInt(arr[1]);
 			RECORDER_BITS = Std.parseInt(arr[2]) * 8;
-		}
-	#else
-		extension_audiorecorder_startRecording(new CallBackAction(callback, fail, ready), size);
-	#end
+		}	
 	}
 	
 	public static function startRecordingBluetooth(callback:Bytes->Void, ?fail:String->Void, ?ready:Void->Void, size:Int = 0){
 		initConfig();
-	#if android
 		if (checkPermission(startRecordingBluetooth.bind(callback, fail, ready, size), Permissions.RECORD_AUDIO)){
-			jni_startRecordingBluetooth(new CallBackAction(callback, fail, ready), new CallBackAction(function(arr:Bytes){}, function(str:Dynamic){
+		extension_audiorecorder_startRecordingBluetooth(new CallBackAction(callback, fail, ready), new CallBackAction(function(arr:Bytes){}, function(str:Dynamic){
 				var arr = str.split(",");
 				RECORDER_SAMPLERATE = Std.parseInt(arr[0]);
 				RECORDER_CHANNELS = Std.parseInt(arr[1]);
 				RECORDER_BITS = Std.parseInt(arr[2]) * 8;
 			}), size);
 		}
-	#end
 	}
 	
 	public static function stopRecording(){
-	#if android
-		jni_stopRecording();
-	#end
+		extension_audiorecorder_stopRecording();
 	}
 	
 	public static function enableSupressor(mode:Bool):Bool{
-	#if android
-		return jni_enableSupressor(mode);
-	#end
-		return false;
+		return extension_audiorecorder_enableSupressor(mode);
 	};
 
 	public static function isSilent(pcm:Array<Int>, treshhold:Int = 10):Bool{
@@ -75,6 +71,10 @@ class Audiorecorder {
 		return true;
 	}
 
+	public static function isHeadsetEvailable():Bool{		
+		return extension_audiorecorder_isHeadsetEvailable();
+	}
+	
 	public static function getAudioBuffer(pcm:Bytes):AudioBuffer{
 		var audioBuffer = new AudioBuffer();
 		audioBuffer.bitsPerSample = RECORDER_BITS;
@@ -86,45 +86,58 @@ class Audiorecorder {
 
 	private static function initConfig(){
 	#if android
-		jni_clearRates();
-		jni_clearChanel();
-		jni_clearBits();
+		extension_audiorecorder_clearRates();
+		extension_audiorecorder_clearChannels();
+		extension_audiorecorder_clearBits();
 		for (i in sampleRates){
-			jni_addRate(i);
+			extension_audiorecorder_addRate(i);
 		}
 		for (i in channels){
-			jni_addChanel(i);
+			extension_audiorecorder_addChannel(i);
 		}
 		for (i in bits){
-			jni_addBits(i);
+			extension_audiorecorder_addBits(i);
 		}
 	#end
 	}
 
-#if android
 	private static function checkPermission(action:Void->Void, p:String){
+	#if android
 		if (!Permissions.hasPermission(p)){
 			Permissions.requestPermission(p);
 			delay(action, 500);
 			return false;
 		}
+	#end
 		return true;
 	}	
 	
-	private static var jni_startRecording = JNI.createStaticMethod ("org.haxe.extension.Audiorecorder", "startRecording", "(Lorg/haxe/lime/HaxeObject;I)Ljava/lang/String;");
-	private static var jni_startRecordingBluetooth = JNI.createStaticMethod ("org.haxe.extension.Audiorecorder", "startRecordingBluetooth", "(Lorg/haxe/lime/HaxeObject;Lorg/haxe/lime/HaxeObject;I)V");
-	private static var jni_stopRecording = JNI.createStaticMethod ("org.haxe.extension.Audiorecorder", "stopRecording", "()V");
-	private static var jni_enableSupressor = JNI.createStaticMethod ("org.haxe.extension.Audiorecorder", "enableSupressor", "(Z)Z");
-	private static var jni_addRate = JNI.createStaticMethod ("org.haxe.extension.Audiorecorder", "addRate", "(I)V");
-	private static var jni_addChanel = JNI.createStaticMethod ("org.haxe.extension.Audiorecorder", "addChanel", "(I)V");
-	private static var jni_addBits = JNI.createStaticMethod ("org.haxe.extension.Audiorecorder", "addBits", "(I)V");
-	private static var jni_clearRates = JNI.createStaticMethod ("org.haxe.extension.Audiorecorder", "clearRates", "()V");
-	private static var jni_clearChanel = JNI.createStaticMethod ("org.haxe.extension.Audiorecorder", "clearChanel", "()V");
-	private static var jni_clearBits = JNI.createStaticMethod ("org.haxe.extension.Audiorecorder", "clearBits", "()V");
-#elseif ios
+#if android
+	
+	private static var extension_audiorecorder_startRecording = JNI.createStaticMethod ("org.haxe.extension.Audiorecorder", "startRecording", "(Lorg/haxe/lime/HaxeObject;I)Ljava/lang/String;");
+	private static var extension_audiorecorder_startRecordingBluetooth = JNI.createStaticMethod ("org.haxe.extension.Audiorecorder", "startRecordingBluetooth", "(Lorg/haxe/lime/HaxeObject;Lorg/haxe/lime/HaxeObject;I)V");
+	private static var extension_audiorecorder_stopRecording = JNI.createStaticMethod ("org.haxe.extension.Audiorecorder", "stopRecording", "()V");
+	private static var extension_audiorecorder_enableSupressor = JNI.createStaticMethod ("org.haxe.extension.Audiorecorder", "enableSupressor", "(Z)Z");
+	private static var extension_audiorecorder_addRate = JNI.createStaticMethod ("org.haxe.extension.Audiorecorder", "addRate", "(I)V");
+	private static var extension_audiorecorder_addChannel = JNI.createStaticMethod ("org.haxe.extension.Audiorecorder", "addChannel", "(I)V");
+	private static var extension_audiorecorder_addBits = JNI.createStaticMethod ("org.haxe.extension.Audiorecorder", "addBits", "(I)V");
+	private static var extension_audiorecorder_clearRates = JNI.createStaticMethod ("org.haxe.extension.Audiorecorder", "clearRates", "()V");
+	private static var extension_audiorecorder_clearChannels = JNI.createStaticMethod ("org.haxe.extension.Audiorecorder", "clearChannels", "()V");
+	private static var extension_audiorecorder_clearBits = JNI.createStaticMethod ("org.haxe.extension.Audiorecorder", "clearBits", "()V");
+	private static var extension_audiorecorder_isHeadsetEvailable = JNI.createStaticMethod ("org.haxe.extension.Audiorecorder", "isHeadsetEvailable", "()Z");
 
 #else
 	private static var extension_audiorecorder_startRecording = CFFI.load ("extension_audiorecorder", "extension_audiorecorder_startRecording", 2);	
+	private static var extension_audiorecorder_startRecordingBluetooth = CFFI.load ("extension_audiorecorder", "extension_audiorecorder_startRecordingBluetooth", 3);	
+	private static var extension_audiorecorder_stopRecording = CFFI.load ("extension_audiorecorder", "extension_audiorecorder_stopRecording", 0);	
+	private static var extension_audiorecorder_enableSupressor = CFFI.load ("extension_audiorecorder", "extension_audiorecorder_enableSupressor", 1);	
+	private static var extension_audiorecorder_addRate = CFFI.load ("extension_audiorecorder", "extension_audiorecorder_addRate", 1);	
+	private static var extension_audiorecorder_addChannel = CFFI.load ("extension_audiorecorder", "extension_audiorecorder_addChannel", 1);	
+	private static var extension_audiorecorder_addBits = CFFI.load ("extension_audiorecorder", "extension_audiorecorder_addBits", 1);	
+	private static var extension_audiorecorder_clearRates = CFFI.load ("extension_audiorecorder", "extension_audiorecorder_clearRates", 0);	
+	private static var extension_audiorecorder_clearChannels = CFFI.load ("extension_audiorecorder", "extension_audiorecorder_clearChannels", 0);	
+	private static var extension_audiorecorder_clearBits = CFFI.load ("extension_audiorecorder", "extension_audiorecorder_clearBits", 0);	
+	private static var extension_audiorecorder_isHeadsetEvailable = CFFI.load ("extension_audiorecorder", "extension_audiorecorder_isHeadsetEvailable", 0);	
 #end
 	
 }
