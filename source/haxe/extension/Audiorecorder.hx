@@ -63,7 +63,14 @@ class Audiorecorder {
 		return extension_audiorecorder_enableSupressor(mode);
 	};
 
-	public static function isSilent(pcm:Array<Int>, treshhold:Int = 10):Bool{
+	public static function isSilent(pcm:Array<Int>, treshhold:Int = 10, ?samplerate:Int, ?bits:Int, ?channels:Int):Bool{
+		if (samplerate == null)
+			samplerate = RECORDER_SAMPLERATE;
+		if (bits == null)
+			bits = RECORDER_BITS;
+		if (channels == null)
+			channels = RECORDER_CHANNELS;
+		
 		for (i in pcm){
 			if (i + 127 > treshhold) //TODO:check values of array
 				return false;
@@ -75,11 +82,18 @@ class Audiorecorder {
 		return extension_audiorecorder_isHeadsetEvailable();
 	}
 	
-	public static function getAudioBuffer(pcm:Bytes):AudioBuffer{
+	public static function getAudioBuffer(pcm:Bytes, ?samplerate:Int, ?bits:Int, ?channels:Int):AudioBuffer{
+		if (samplerate == null)
+			samplerate = RECORDER_SAMPLERATE;
+		if (bits == null)
+			bits = RECORDER_BITS;
+		if (channels == null)
+			channels = RECORDER_CHANNELS;
+			
 		var audioBuffer = new AudioBuffer();
-		audioBuffer.bitsPerSample = RECORDER_BITS;
-		audioBuffer.channels = RECORDER_CHANNELS;
-		audioBuffer.sampleRate = RECORDER_SAMPLERATE;
+		audioBuffer.bitsPerSample = bits;
+		audioBuffer.channels = channels;
+		audioBuffer.sampleRate = samplerate;
 		audioBuffer.data = UInt8Array.fromBytes(pcm);
 		return audioBuffer;
 	}
