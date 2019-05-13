@@ -21,13 +21,13 @@ using namespace extension_audiorecorder;
 #define idval(name) id_##name?id_##name:id_##name=val_id(#name)
 
 static value _callback;
-static value _result;
 
 static int id_b;
 static int id_length;
 static int id_action;
 static int id_fail;
 static int id_ready;
+static int id_format;
 	
 static void onData(void* dataIn, int length){
 	value bytes;
@@ -60,7 +60,7 @@ static void onReady(){
 }
 
 static void onPrepared(char* val){
-	val_ocall1(_result, idval(fail), alloc_string(val));
+	val_ocall1(_callback, idval(format), alloc_string(val));
 }
 
 
@@ -71,20 +71,18 @@ static value extension_audiorecorder_startRecording(value callback, value vsize)
 }
 DEFINE_PRIM(extension_audiorecorder_startRecording, 2);
 
-static value extension_audiorecorder_startRecordingBluetooth(value callback, value result, value vsize){
+static value extension_audiorecorder_startRecordingBluetooth(value callback, value vsize){
 	//do some work
 	_callback=callback;
-	_result=result;
 	startRecordingBluetooth(val_int(vsize), &onData, &onFail, &onReady, &onPrepared);
 	return alloc_null();
 }
-DEFINE_PRIM(extension_audiorecorder_startRecordingBluetooth, 3);
+DEFINE_PRIM(extension_audiorecorder_startRecordingBluetooth, 2);
 
 static value extension_audiorecorder_stopRecording(){
 	//do some work
 	stopRecording();
 	_callback=0;
-	_result=0;
 	return alloc_null();
 }
 DEFINE_PRIM(extension_audiorecorder_stopRecording, 0);

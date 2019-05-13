@@ -33,26 +33,37 @@ class Audiorecorder {
 		#end
 	}
 	
+	public static function setFormat(str:String){
+		var arr = str.split(",");
+		RECORDER_SAMPLERATE = Std.parseInt(arr[0]);
+		RECORDER_CHANNELS = Std.parseInt(arr[1]);
+		RECORDER_BITS = Std.parseInt(arr[2]) * 8;
+	}
+	
 	public static function startRecording(callback:Bytes->Void, ?fail:String->Void, ?ready:Void->Void, size:Int = 0){
 		initConfig();
+	#if !android && !ios //mobile starts thread by itself
+		Thread.create(function(){
+	#end
 		if (checkPermission(startRecording.bind(callback, fail, ready, size), Permissions.RECORD_AUDIO)){
-			var arr = extension_audiorecorder_startRecording(new CallBackAction(callback, fail, ready), size).split(",");
-			RECORDER_SAMPLERATE = Std.parseInt(arr[0]);
-			RECORDER_CHANNELS = Std.parseInt(arr[1]);
-			RECORDER_BITS = Std.parseInt(arr[2]) * 8;
+			extension_audiorecorder_startRecording(CallBackAction.getObject(callback, fail, ready), size);
 		}	
+	#if !android && !ios
+		});
+	#end
 	}
 	
 	public static function startRecordingBluetooth(callback:Bytes->Void, ?fail:String->Void, ?ready:Void->Void, size:Int = 0){
 		initConfig();
+	#if !android && !ios//mobile starts thread by itself
+		Thread.create(function(){
+	#end
 		if (checkPermission(startRecordingBluetooth.bind(callback, fail, ready, size), Permissions.RECORD_AUDIO)){
-		extension_audiorecorder_startRecordingBluetooth(new CallBackAction(callback, fail, ready), new CallBackAction(function(arr:Bytes){}, function(str:Dynamic){
-				var arr = str.split(",");
-				RECORDER_SAMPLERATE = Std.parseInt(arr[0]);
-				RECORDER_CHANNELS = Std.parseInt(arr[1]);
-				RECORDER_BITS = Std.parseInt(arr[2]) * 8;
-			}), size);
+			extension_audiorecorder_startRecordingBluetooth(CallBackAction.getObject(callback, fail, ready), size);
 		}
+	#if !android && !ios
+		});
+	#end
 	}
 	
 	public static function stopRecording(){
@@ -128,8 +139,8 @@ class Audiorecorder {
 	
 #if android
 	
-	private static var extension_audiorecorder_startRecording = JNI.createStaticMethod ("org.haxe.extension.Audiorecorder", "startRecording", "(Lorg/haxe/lime/HaxeObject;I)Ljava/lang/String;");
-	private static var extension_audiorecorder_startRecordingBluetooth = JNI.createStaticMethod ("org.haxe.extension.Audiorecorder", "startRecordingBluetooth", "(Lorg/haxe/lime/HaxeObject;Lorg/haxe/lime/HaxeObject;I)V");
+	private static var extension_audiorecorder_startRecording = JNI.createStaticMethod ("org.haxe.extension.Audiorecorder", "startRecording", "(Lorg/haxe/lime/HaxeObject;I)V");
+	private static var extension_audiorecorder_startRecordingBluetooth = JNI.createStaticMethod ("org.haxe.extension.Audiorecorder", "startRecordingBluetooth", "(Lorg/haxe/lime/HaxeObject;I)V");
 	private static var extension_audiorecorder_stopRecording = JNI.createStaticMethod ("org.haxe.extension.Audiorecorder", "stopRecording", "()V");
 	private static var extension_audiorecorder_enableSupressor = JNI.createStaticMethod ("org.haxe.extension.Audiorecorder", "enableSupressor", "(Z)Z");
 	private static var extension_audiorecorder_addRate = JNI.createStaticMethod ("org.haxe.extension.Audiorecorder", "addRate", "(I)V");
@@ -142,7 +153,7 @@ class Audiorecorder {
 
 #elseif !flash
 	private static var extension_audiorecorder_startRecording = CFFI.load ("extension_audiorecorder", "extension_audiorecorder_startRecording", 2);	
-	private static var extension_audiorecorder_startRecordingBluetooth = CFFI.load ("extension_audiorecorder", "extension_audiorecorder_startRecordingBluetooth", 3);	
+	private static var extension_audiorecorder_startRecordingBluetooth = CFFI.load ("extension_audiorecorder", "extension_audiorecorder_startRecordingBluetooth", 2);	
 	private static var extension_audiorecorder_stopRecording = CFFI.load ("extension_audiorecorder", "extension_audiorecorder_stopRecording", 0);	
 	private static var extension_audiorecorder_enableSupressor = CFFI.load ("extension_audiorecorder", "extension_audiorecorder_enableSupressor", 1);	
 	private static var extension_audiorecorder_addRate = CFFI.load ("extension_audiorecorder", "extension_audiorecorder_addRate", 1);	
@@ -157,14 +168,34 @@ class Audiorecorder {
 }
 
 class CallBackAction{
+	private static var _action:CallBackAction = new CallBackAction();
+	
+	public static function getObject(c:Bytes->Void, ?f:String->Void, ?r:Void->Void):CallBackAction{
+		_action._callback = c;
+		if (_action._callback == null)
+			_action._callback = dummyB;
+		_action._fail = f;
+		if (_action._fail == null)
+			_action._fail = dummyS;
+		_action._ready = r;
+		if (_action._ready == null)
+			_action._ready = dummyV;
+		return _action;
+	}
+	
 	private var _callback:Null<Bytes->Void>;
 	private var _fail:Null<String->Void>;
 	private var _ready:Null<Void->Void>;
 	
-	public function new(c:Bytes->Void, ?f:String->Void, ?r:Void->Void){
+	private static function dummyB(b:Bytes){trace("dummyB"); }
+	private static function dummyS(b:String){trace("dummyS"); }
+	private static function dummyV(){trace("dummyV");}
+	
+	public function new(?c:Bytes->Void, ?f:String->Void, ?r:Void->Void){
 		_callback = c;
 		_fail = f;
 		_ready = r;
+		
 	}
 #if android
 	public function action(a:Array<Int>){
@@ -179,6 +210,11 @@ class CallBackAction{
 		_callback(bytes);
 	}
 #end
+	
+	public function format(a:String){
+		Audiorecorder.setFormat(a);
+	}
+	
 	public function fail(a:String){
 		if (_fail!=null)
 			_fail(a);

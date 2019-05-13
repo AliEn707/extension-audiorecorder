@@ -77,10 +77,10 @@ public class Audiorecorder extends Extension {
 	private static AtomicBoolean isRecording = new AtomicBoolean();
 	
 	//todo change for update listener
-	public static String startRecording(final HaxeObject callback, int size) {
+	public static void startRecording(final HaxeObject callback, int size) {
 		if (isRecording.get()){
-			callback.call("fail", new Object[] {-1});//change to Throwable
-			return "-1,0,0";
+			callback.call("fail", new Object[] {"already running"});//change to Throwable
+			callback.call("format", new Object[] { "0,0,0" });
 		}
 		readSize=size;
 		try{
@@ -120,15 +120,15 @@ public class Audiorecorder extends Extension {
 				supressor=null;
 			}
 			callback.call0("ready");
-			return RECORDER_SAMPLERATE+","+getChannels(RECORDER_CHANNELS)+","+getFormat(RECORDER_AUDIO_ENCODING);
+			callback.call("format", new Object[] { RECORDER_SAMPLERATE+","+getChannels(RECORDER_CHANNELS)+","+getFormat(RECORDER_AUDIO_ENCODING) });
 //			}
 		}catch(Throwable e){
 			callback.call("fail", new Object[] {e+" (No available config)"});//change to Throwable
 		}
-		return "0,0,0";
+		callback.call("format", new Object[] { "0,0,0" });
 	}
 
-	public static void startRecordingBluetooth(final HaxeObject callback, final HaxeObject result, final int size) {
+	public static void startRecordingBluetooth(final HaxeObject callback, final int size) {
 		AudioManager am = (AudioManager) Extension.mainContext.getSystemService(Context.AUDIO_SERVICE);
 		if (receiver!=null){
 			Extension.mainContext.unregisterReceiver(receiver);
@@ -141,7 +141,7 @@ public class Audiorecorder extends Extension {
 				Log.d(TAG, "Audio SCO state: " + state);
 
 				if (AudioManager.SCO_AUDIO_STATE_CONNECTED == state) {
-					result.call("fail", new Object[] { startRecording(callback, size) });
+					startRecording(callback, size);
 				}else if (AudioManager.SCO_AUDIO_STATE_DISCONNECTED == state){
 					callback.call("fail", new Object[] {"Bluetooth disconnected"});
 					//stopRecording();
