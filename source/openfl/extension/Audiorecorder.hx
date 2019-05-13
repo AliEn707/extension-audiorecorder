@@ -1,4 +1,4 @@
-package haxe.extension;
+package openfl.extension;
 
 
 import haxe.Timer.delay;
