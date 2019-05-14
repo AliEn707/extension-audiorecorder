@@ -14,6 +14,13 @@ import lime.system.JNI;
 import lime.system.CFFI;
 #end
 
+#if cpp
+import cpp.vm.Thread;
+#elseif neko
+import neko.vm.Thread;
+#elseif java
+import java.vm.Thread;
+#end
 
 
 class Audiorecorder {
@@ -42,26 +49,26 @@ class Audiorecorder {
 	
 	public static function startRecording(callback:Bytes->Void, ?fail:String->Void, ?ready:Void->Void, size:Int = 0){
 		initConfig();
-	#if !android && !ios //mobile starts thread by itself
+	#if (!android && !ios && !flash) //mobile starts thread by itself
 		Thread.create(function(){
 	#end
 		if (checkPermission(startRecording.bind(callback, fail, ready, size), Permissions.RECORD_AUDIO)){
 			extension_audiorecorder_startRecording(CallBackAction.getObject(callback, fail, ready), size);
 		}	
-	#if !android && !ios
+	#if (!android && !ios && !flash)
 		});
 	#end
 	}
 	
 	public static function startRecordingBluetooth(callback:Bytes->Void, ?fail:String->Void, ?ready:Void->Void, size:Int = 0){
 		initConfig();
-	#if !android && !ios//mobile starts thread by itself
+	#if (!android && !ios && !flash) //mobile starts thread by itself
 		Thread.create(function(){
 	#end
 		if (checkPermission(startRecordingBluetooth.bind(callback, fail, ready, size), Permissions.RECORD_AUDIO)){
 			extension_audiorecorder_startRecordingBluetooth(CallBackAction.getObject(callback, fail, ready), size);
 		}
-	#if !android && !ios
+	#if (!android && !ios && !flash)
 		});
 	#end
 	}
@@ -189,7 +196,7 @@ class CallBackAction{
 	
 	private static function dummyB(b:Bytes){trace("dummyB"); }
 	private static function dummyS(b:String){trace("dummyS"); }
-	private static function dummyV(){trace("dummyV");}
+	private static function dummyV(){trace("dummyV"); }
 	
 	public function new(?c:Bytes->Void, ?f:String->Void, ?r:Void->Void){
 		_callback = c;
