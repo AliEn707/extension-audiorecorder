@@ -67,7 +67,7 @@ static void onPrepared(char* val){
 
 static value extension_audiorecorder_startRecording(value callback, value vsize){
 	_callback=callback;
-	return alloc_string(startRecording(val_int(vsize), &onData, &onFail, &onReady));
+	return alloc_string(startRecording(val_int(vsize), &onData, &onFail, &onReady, &onPrepared));
 }
 DEFINE_PRIM(extension_audiorecorder_startRecording, 2);
 

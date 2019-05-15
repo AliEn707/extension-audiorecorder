@@ -117,7 +117,7 @@ class Audiorecorder {
 	}
 
 	private static function initConfig(){
-	#if android
+//	#if android
 		extension_audiorecorder_clearRates();
 		extension_audiorecorder_clearChannels();
 		extension_audiorecorder_clearBits();
@@ -130,7 +130,7 @@ class Audiorecorder {
 		for (i in bits){
 			extension_audiorecorder_addBits(i);
 		}
-	#end
+//	#end
 	}
 
 	private static function checkPermission(action:Void->Void, p:String){
@@ -219,6 +219,7 @@ class CallBackAction{
 #end
 	
 	public function format(a:String){
+		trace(a);
 		Audiorecorder.setFormat(a);
 	}
 	

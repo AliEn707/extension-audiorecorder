@@ -13,7 +13,7 @@ namespace extension_audiorecorder {
 	typedef void (callback_ready)();
 	typedef void (callback_fail)(char*);
 	
-	char* startRecording(int size, callback_data action, callback_fail fail, callback_ready ready);
+	char* startRecording(int size, callback_data action, callback_fail fail, callback_ready ready, callback_fail prepared);
 	
 	void startRecordingBluetooth(int size, callback_data action, callback_fail fail, callback_ready ready, callback_fail prepared);
 	
