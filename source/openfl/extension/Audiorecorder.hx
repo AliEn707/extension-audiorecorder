@@ -5,6 +5,7 @@ import haxe.Timer.delay;
 import haxe.io.Bytes;
 import haxe.io.BytesData;
 import haxe.io.BytesInput;
+import haxe.io.BytesOutput;
 import lime.utils.UInt8Array;
 import lime.media.AudioBuffer;
 import com.player03.android6.Permissions;
@@ -41,6 +42,7 @@ class Audiorecorder {
 	}
 	
 	public static function setFormat(str:String){
+		trace(str);
 		var arr = str.split(",");
 		RECORDER_SAMPLERATE = Std.parseInt(arr[0]);
 		RECORDER_CHANNELS = Std.parseInt(arr[1]);
@@ -81,17 +83,32 @@ class Audiorecorder {
 		return extension_audiorecorder_enableSupressor(mode);
 	};
 
-	public static function isSilent(pcm:Array<Int>, treshhold:Int = 10, ?samplerate:Int, ?bits:Int, ?channels:Int):Bool{
+	public static function isSilent(pcm:Bytes, treshhold:Float = 0.1, ?samplerate:Int, ?bits:Int, ?channels:Int):Bool{
 		if (samplerate == null)
 			samplerate = RECORDER_SAMPLERATE;
 		if (bits == null)
 			bits = RECORDER_BITS;
 		if (channels == null)
 			channels = RECORDER_CHANNELS;
-		
-		for (i in pcm){
-			if (i + 127 > treshhold) //TODO:check values of array
-				return false;
+		var bi = new BytesInput(pcm);
+		if (bits==8){
+			var th:Int = cast (treshhold * 127);
+			try{
+				while(true){
+					var s = bi.readByte();
+					if (s<-th || s>th)
+						return false;
+				}
+			}catch(e:Any){}
+		}else if (bits==16){
+			var th:Int = cast (treshhold * 32767);
+			try{
+				while(true){
+					var s = bi.readInt16();
+					if (s<-th || s>th)
+						return false;
+				}					
+			}catch(e:Any){}				
 		}
 		return true;
 	}
@@ -117,7 +134,6 @@ class Audiorecorder {
 	}
 
 	private static function initConfig(){
-	#if android
 		extension_audiorecorder_clearRates();
 		extension_audiorecorder_clearChannels();
 		extension_audiorecorder_clearBits();
@@ -130,7 +146,6 @@ class Audiorecorder {
 		for (i in bits){
 			extension_audiorecorder_addBits(i);
 		}
-	#end
 	}
 
 	private static function checkPermission(action:Void->Void, p:String){

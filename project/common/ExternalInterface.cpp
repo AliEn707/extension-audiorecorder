@@ -48,26 +48,30 @@ static void onData(void* dataIn, int length){
 	alloc_field (object, idval(b), bytes);
 	alloc_field (object, idval(length), alloc_int (length));
 	
-	val_ocall1(_callback, idval(action), object);
+	if (_callback)
+		val_ocall1(_callback, idval(action), object);
 }
 
 static void onFail(char* error){
-	val_ocall1(_callback, idval(fail), alloc_string(error));
+	if (_callback)
+		val_ocall1(_callback, idval(fail), alloc_string(error));
 }
 
 static void onReady(){
-	val_ocall0(_callback, idval(ready));
+	if (_callback)
+		val_ocall0(_callback, idval(ready));
 }
 
 static void onPrepared(char* val){
-	val_ocall1(_callback, idval(format), alloc_string(val));
+	if (_callback)
+		val_ocall1(_callback, idval(format), alloc_string(val));
 }
-
 
 
 static value extension_audiorecorder_startRecording(value callback, value vsize){
 	_callback=callback;
-	return alloc_string(startRecording(val_int(vsize), &onData, &onFail, &onReady));
+	startRecording(val_int(vsize), &onData, &onFail, &onReady, &onPrepared);
+	return alloc_null();
 }
 DEFINE_PRIM(extension_audiorecorder_startRecording, 2);
 
@@ -82,7 +86,7 @@ DEFINE_PRIM(extension_audiorecorder_startRecordingBluetooth, 2);
 static value extension_audiorecorder_stopRecording(){
 	//do some work
 	stopRecording();
-	_callback=0;
+//	_callback=0;
 	return alloc_null();
 }
 DEFINE_PRIM(extension_audiorecorder_stopRecording, 0);
