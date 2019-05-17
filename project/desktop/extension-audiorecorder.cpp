@@ -29,7 +29,7 @@ namespace extension_audiorecorder {
 		if (channels*bits*rate){
 			recording.store(1);
 			ready();
-			float x=1000.0/channels/bits/rate;
+			float x=1000.0/channels/bits/rate*8;
 			int j_=rand()%4;
 			int hz[4]={rand()%10000,rand()%10000,rand()%10000,rand()%10000};
 			while(recording.load()){

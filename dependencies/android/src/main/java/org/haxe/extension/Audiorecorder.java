@@ -125,7 +125,7 @@ public class Audiorecorder extends Extension {
 			return;
 //			}
 		}catch(Throwable e){
-			callback.call("fail", new Object[] {e+" (No available config)"});//change to Throwable
+			callback.call("fail", new Object[] {e+""});//change to Throwable
 		}
 		callback.call("format", new Object[] { "0,0,0" });
 	}
