@@ -81,6 +81,7 @@ public class Audiorecorder extends Extension {
 		if (isRecording.get()){
 			callback.call("fail", new Object[] {"already running"});//change to Throwable
 			callback.call("format", new Object[] { "0,0,0" });
+			return;
 		}
 		readSize=size;
 		try{
@@ -113,17 +114,18 @@ public class Audiorecorder extends Extension {
 					}
 				}
 			}, "AudioRecorder Thread");
-			recordingThread.start();
 			supressor = NoiseSuppressor.create(recorder.getAudioSessionId());
 			if (supressor!=null && !supressor.isAvailable()){
 				supressor.release();
 				supressor=null;
 			}
-			callback.call0("ready");
 			callback.call("format", new Object[] { RECORDER_SAMPLERATE+","+getChannels(RECORDER_CHANNELS)+","+getFormat(RECORDER_AUDIO_ENCODING) });
+			callback.call0("ready");
+			recordingThread.start();
+			return;
 //			}
 		}catch(Throwable e){
-			callback.call("fail", new Object[] {e+" (No available config)"});//change to Throwable
+			callback.call("fail", new Object[] {e+""});//change to Throwable
 		}
 		callback.call("format", new Object[] { "0,0,0" });
 	}
@@ -190,7 +192,7 @@ public class Audiorecorder extends Extension {
 								bufferSize=size;
 							if (size==0)
 								readSize=bufferSize;
-							Log.d(TAG, "Buffer size OK "+bufferSize);
+							Log.d(TAG, "OK Buffer size = "+bufferSize+"Read size = "+readSize );
 							return new AudioRecord(MediaRecorder.AudioSource.MIC,
 								(int)rate, (short)channelConfig,
 								(short)audioFormat, bufferSize*2);
@@ -216,7 +218,7 @@ public class Audiorecorder extends Extension {
 		mSampleRates.add(rate);
 	}
 	
-	public static void addChanel(int num) {
+	public static void addChannel(int num) {
 		if (num==1){
 			chConfigs.add((short)AudioFormat.CHANNEL_IN_MONO);
 		}else if(num==2){			
@@ -238,7 +240,7 @@ public class Audiorecorder extends Extension {
 		mSampleRates.clear();
 	}
 	
-	public static void clearChanel(){
+	public static void clearChannels(){
 		chConfigs.clear();
 	}
 	
@@ -270,7 +272,7 @@ public class Audiorecorder extends Extension {
 		
 	}
 	
-	public static Boolean isHeadsetEvailable(){
+	public static boolean isHeadsetEvailable(){
 		BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
 		return mBluetoothAdapter != null && mBluetoothAdapter.isEnabled()
 				&& mBluetoothAdapter.getProfileConnectionState(BluetoothHeadset.HEADSET) == BluetoothHeadset.STATE_CONNECTED;

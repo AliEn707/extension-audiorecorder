@@ -2,37 +2,52 @@
 #include <cstdlib>
 #include <chrono>
 #include <thread>
+#include <atomic>
+#include <math.h>
+
 
 #include "Utils.h"
+
+#define PI 3.14159265359
+
+static inline int max(int a,int b) {
+	return a>b?a:b;
+}
 
 
 namespace extension_audiorecorder {
 	
-	bool running=0;
-	int rate=0;
-	int channel=0;
-	int bits=0;
+
+	static int channels=0;
+	static int rate=0;
+	static int bits=0;
+	static std::atomic_char recording;
 	
-	
-	char* startRecording(int size, callback_data action, callback_fail fail, callback_ready ready, callback_fail prepared){
-		unsigned char *a=new unsigned char[size];
-		int length=rate*channel*bits/8;
-		char out[20];
-		running=1;
-		srand(time(0));
-		sprintf(out, "%d,%d,%d", rate, channel, bits/8);
-		ready();
-		prepared(out);
-//		while(running){
-//			std::this_thread::sleep_for(std::chrono::microseconds(size*1000*1000/length));
-//			for (int i=0;i<size;i++){
-//				a[i]=rand()%200;
-//			}
-//			action((void*)a, size);
-//		}
+	void startRecording(int size, callback_data action, callback_fail fail, callback_ready ready, callback_fail prepared){
+		unsigned char* a=new unsigned char[size];
+		char f[20];
+		sprintf(f,"%d,%d,%d",rate,channels,bits/8);
+		prepared(f);
+		if (channels*bits*rate){
+			recording.store(1);
+			ready();
+			float x=1000.0/channels/bits/rate*8;
+			int j_=rand()%4;
+			int hz[4]={rand()%10000,rand()%10000,rand()%10000,rand()%10000};
+			while(recording.load()){
+				std::this_thread::sleep_for(std::chrono::milliseconds((int)(size*x)));
+				for(int i=0;i<size;i++)
+					a[i]=0;
+				for (int j=0;j<j_;j++){
+					for(int i=0;i<size;i++)
+						a[i]=max(a[i],150*sin(2*PI*hz[j]*x*i));//rand()%200;
+				}
+				action((void*)a, size);
+			}
+		}
 		fail("error");
 		delete[] a;
-		return "0,0,0";
+
 	}
 	
 	void startRecordingBluetooth(int size, callback_data action, callback_fail fail, callback_ready ready, callback_fail prepared){
@@ -41,7 +56,7 @@ namespace extension_audiorecorder {
 	}
 	
 	void stopRecording(){
-		running=0;
+		recording.store(0);
 	}
 	
 	bool enableSupressor(bool mode){
@@ -58,8 +73,8 @@ namespace extension_audiorecorder {
 	}
 	
 	void addChannel(int val){
-		if (channel==0)
-			channel=val;
+		if (channels==0)
+			channels=val;
 	}
 	
 	void addBits(int val){
@@ -72,7 +87,7 @@ namespace extension_audiorecorder {
 	}
 		
 	void clearChannels(){
-		channel=0;
+		channels=0;
 	}
 	
 	void clearBits(){
