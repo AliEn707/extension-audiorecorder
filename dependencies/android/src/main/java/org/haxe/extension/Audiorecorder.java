@@ -193,7 +193,7 @@ public class Audiorecorder extends Extension {
 							if (size==0)
 								readSize=bufferSize;
 							Log.d(TAG, "OK Buffer size = "+bufferSize+"Read size = "+readSize );
-							return new AudioRecord(MediaRecorder.AudioSource.MIC,
+							return new AudioRecord(MediaRecorder.AudioSource.VOICE_RECOGNITION,//VOICE_COMMUNICATION,//MIC,
 								(int)rate, (short)channelConfig,
 								(short)audioFormat, bufferSize*2);
 						}
