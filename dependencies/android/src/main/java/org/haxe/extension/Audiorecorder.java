@@ -71,7 +71,6 @@ public class Audiorecorder extends Extension {
 	
 	private static BroadcastReceiver receiver = null;
 	private static AudioRecord recorder = null;
-	private static NoiseSuppressor supressor = null;
 	private static Thread recordingThread = null;
 	
 	private static AtomicBoolean isRecording = new AtomicBoolean();
@@ -114,11 +113,6 @@ public class Audiorecorder extends Extension {
 					}
 				}
 			}, "AudioRecorder Thread");
-			supressor = NoiseSuppressor.create(recorder.getAudioSessionId());
-			if (supressor!=null && !supressor.isAvailable()){
-				supressor.release();
-				supressor=null;
-			}
 			callback.call("format", new Object[] { RECORDER_SAMPLERATE+","+getChannels(RECORDER_CHANNELS)+","+getFormat(RECORDER_AUDIO_ENCODING) });
 			callback.call0("ready");
 			recordingThread.start();
@@ -193,7 +187,13 @@ public class Audiorecorder extends Extension {
 							if (size==0)
 								readSize=bufferSize;
 							Log.d(TAG, "OK Buffer size = "+bufferSize+"Read size = "+readSize );
-							return new AudioRecord(MediaRecorder.AudioSource.VOICE_RECOGNITION,//VOICE_COMMUNICATION,//MIC,
+							int source;
+							AudioManager audioManager = (AudioManager)Extension.mainContext.getSystemService(Context.AUDIO_SERVICE);
+							if(audioManager.getProperty(AudioManager.PROPERTY_SUPPORT_AUDIO_SOURCE_UNPROCESSED) !=null)
+								source = MediaRecorder.AudioSource.UNPROCESSED;
+							else
+								source = MediaRecorder.AudioSource.VOICE_RECOGNITION;
+							return new AudioRecord(source, //MediaRecorder.AudioSource.VOICE_RECOGNITION,//VOICE_COMMUNICATION,//MIC,
 								(int)rate, (short)channelConfig,
 								(short)audioFormat, bufferSize*2);
 						}
@@ -207,10 +207,6 @@ public class Audiorecorder extends Extension {
 	}
 
 	public static boolean enableSupressor(boolean mode) {
-		if (supressor!=null){
-			supressor.setEnabled(mode);
-			return supressor.isAvailable();
-		}
 		return false;
 	}
 	
@@ -257,10 +253,6 @@ public class Audiorecorder extends Extension {
 			recorder.release();
 			recorder = null;
 			recordingThread = null;
-		}
-		if (supressor!=null){
-			supressor.release();
-			supressor=null;
 		}
 		if (receiver != null){
 			AudioManager am = (AudioManager) Extension.mainContext.getSystemService(Context.AUDIO_SERVICE);
